@@ -104,7 +104,8 @@ df_encoded["product_approval"] = target_encoder.fit_transform(df_encoded["produc
 # 'Approved' -> 0, 'Rejected' -> 1 (or vice-versa depending on data alphabet)
 approved_class_value = target_encoder.transform(["Approved"])[0]
 
-X = df_encoded.drop(columns=["product_approval"])
+#X = df_encoded.drop(columns=["product_approval"])
+X = df_encoded.drop(columns=["product_approval", "inspection_score_0_100"])
 y = df_encoded["product_approval"]
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -139,7 +140,34 @@ best_model_name = max(results, key=results.get)
 best_accuracy = results[best_model_name]
 best_model = trained_models[best_model_name]
 
+from sklearn.model_selection import cross_val_score
+for name, model in models.items():
+    scores = cross_val_score(model, X, y, cv=5)
+    print(name, scores.mean().round(4), "+/-", scores.std().round(4))
+
+
+
+#print(f"\n Best Algorithm Found: {best_model_name} ({best_accuracy*100:.2f}% Accuracy)")
+
+best_model_name = max(results, key=results.get)
+best_accuracy = results[best_model_name]
+best_model = trained_models[best_model_name]
+
 print(f"\n Best Algorithm Found: {best_model_name} ({best_accuracy*100:.2f}% Accuracy)")
+
+
+from sklearn.tree import export_text
+
+dt = trained_models["Decision Tree"]
+print("\n Decision Tree Feature Importance:")
+for f, imp in sorted(zip(X.columns, dt.feature_importances_), key=lambda x: -x[1]):
+    print(f"   {f:25s} {imp:.3f}")
+
+print("\n Decision Tree Rules:")
+print(export_text(dt, feature_names=list(X.columns), max_depth=3))
+
+
+
 
 # =====================================================================
 # SAVE THE BEST MODEL USING PICKLE
@@ -179,6 +207,8 @@ new_product_sample = {
 
 # Convert sample to Dataframe format
 new_df = pd.DataFrame([new_product_sample])
+new_df = new_df[X.columns]
+
 
 # Apply the saved LabelEncoders to the new prediction data
 for col in cat_cols:
